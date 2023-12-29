@@ -1,0 +1,227 @@
+#+title: Chapter 1
+#+OPTIONS: toc:nil
+#+PROPERTY: header-args :comments link
+#+PROPERTY: header-args:python :results output :exports both
+
+* Interval arithmetic
+** Calculate intervals
+If $[x]=[-1,3]$ and $[y]=[2,5]$ calculate
+*** $\diamond\in\{+,-,\cdot,/,\max,\min\}$
+**** $+$
+
+$[x]+[y]=[-1,3]+[2,5]=[1,8]$
+**** $-$
+
+$[x]-[y]=[-1,3]-[2,5]=[-1,3]+[-5,-2]=[-6,1]$
+**** $\cdot$
+
+
+$[x]\cdot[y]=[-1,3]\cdot[2,5]=[\{-2,-5,6,15\}]=[-5,15]$
+**** $/$
+
+$[x]/[y]=[-1,3]/[2,5]=[-\frac{1}{2},\frac{3}{2}]$
+**** $\max$
+
+
+$\max([x],[y])=\max([-1,3],[2,5])=[\{2,3,5\}]=[2,5]$
+**** $\min$
+
+$\min([x],[y])=\min([-1,3],[2,5])=[\{-1,2,3\}]=[-1,3]$
+** Compute
+*** $[-2,4]\cdot[1,3]$
+
+$[\{-2,4,-6,12\}]=[-6,12]$
+*** $[-2,4]\sqcup [6,7]$
+
+$[[-2,4]\cup [6,7]]=[-2,7]$
+*** $\max([2,7],[1,9])$
+
+$\max([2,7],[1,9])=[2,9,7]=[2,9]$
+*** $\max(\emptyset,[1,2])$
+
+$[1,2]$
+*** $[-1,3]/[0,\infty]$
+
+$[-1,3]/[0,\infty]=[-\infty,\infty]$
+*** $([1,2]\cdot[-1,3])+\max([1,3]\cap[6,7],[1,2])$
+
+$[-2,6]+\max(\emptyset,[1,2])=[-2,6]+\max(\emptyset,[1,2])=[-2,6]+[1,2]=[-1,8]$
+** Compute
+*** $\text{sqr}([-1,3])$
+
+$\text{sqr}([-1,3])=[0,9]$
+*** $\text{sqrt}([-10,4])$
+
+$\text{sqrt}([-10,4])=[0,2]$
+*** $\log([-2,-1])$
+
+$\log([-2,-1])=\emptyset$
+** Compute
+*** $([1,2]+[-3,4])\cdot[-1,5]$
+
+$[-2,6]\cdot[-1,5]=[\{(2,-6,-10,30\}]=[-10,30]$
+*** $\exp([1,2]/[0,\infty])$
+
+$\exp([0,\infty])=[1,\infty]$
+
+* Intervals with Python
+** Class interval
+*** Definition
+#+begin_src python :tangle myinterval.py
+import math
+
+class Interval:
+    def __init__(self,lb=-float("inf"),ub=float("inf")):
+        self.lb = lb
+        self.ub = ub
+
+    def __str__(self):
+        if math.isnan(self.lb) or math.isnan(self.ub):
+            return "∅"
+        else:
+            if not math.isinf(self.lb):
+                lb_str = str(self.lb)
+            else:
+                if self.lb<0:
+                    lb_str = "-∞"
+                else:
+                    lb_str = "∞"
+            if not math.isinf(self.ub):
+                ub_str = str(self.ub)
+            else:
+                if self.ub<0:
+                    ub_str = "-∞"
+                else:
+                    ub_str = "∞"
+            return "[" + lb_str + "," + ub_str + "]"
+
+    def __contains__(self,value):
+        return value>=self.lb and value<=self.ub
+
+empty_Interval = Interval(float("nan"),float("nan"))
+
+def minimal_Interval(values:list):
+    return Interval(min(values),max(values))
+
+def Interval_sum(first:Interval,second:Interval):
+    return Interval(first.lb+second.lb,first.ub+second.ub)
+
+def Interval_sub(first:Interval,second:Interval):
+    return Interval(first.lb-second.ub,first.ub-second.lb)
+
+def Interval_mul(first:Interval,second:Interval):
+    values = [first.lb*second.lb, first.lb*second.ub, first.ub*second.lb, first.ub*second.ub]
+    return minimal_Interval(values)
+
+def Interval_div(first:Interval,second:Interval):
+    if 0 not in second:
+        new_second = Interval(1/second.ub,1/second.lb)
+    else:
+        if second.ub==0:
+            new_second = Interval(-float("inf"),1/second.lb)
+        elif second.lb==0:
+            new_second = Interval(1/second.ub,float("inf"))
+        else:
+            new_second = Interval(-float("inf"),float("inf"))
+    return Interval_mul(first,new_second)
+
+def Interval_min(first:Interval,second:Interval):
+    values = [min(first.lb,second.lb), min(first.lb,second.ub), min(first.ub,second.lb), min(first.ub,second.ub)]
+    return minimal_Interval(values)
+
+def Interval_max(first:Interval,second:Interval):
+    values = [max(first.lb,second.lb), max(first.lb,second.ub), max(first.ub,second.lb), max(first.ub,second.ub)]
+    return minimal_Interval(values)
+
+def Interval_sqr(interval:Interval):
+    if 0 not in interval:
+        values = [interval.lb*interval.lb, interval.ub*interval.ub]
+    else:
+        values = [0, interval.lb*interval.lb, interval.ub*interval.ub]
+    return minimal_Interval(values)
+
+def Interval_width(interval:Interval):
+    return Interval.ub-interval.lb
+
+def Interval_intersection(first:Interval,second:Interval):
+    if first is empty_Interval or second is empty_Interval:
+        return empty_Interval
+    else:
+        return Interval(max(first.lb,second.lb),min(first.ub,second.ub))
+
+def Interval_union(first:Interval,second:Interval):
+    if first is empty_Interval or second is empty_Interval:
+        return empty_Interval
+    else:
+        if first.ub<second.lb or second.ub<first.lb:
+            return empty_Interval
+        else:
+            return Interval(min(first.lb,second.lb),max(first.ub,second.ub))
+
+def Interval_hull_union(first:Interval,second:Interval):
+    if first is empty_Interval or second is empty_Interval:
+        return empty_Interval
+    else:
+        return Interval(min(first.lb,second.lb),max(first.ub,second.ub))
+#+end_src
+
+*** Test
+#+begin_src python :tangle test_myinterval.py
+from myinterval import *
+
+print("Exo1")
+print("1)")
+x = Interval(-1,3)
+y = Interval(2,5)
+print(x,"+",y,"="        ,Interval_sum(x,y))
+print(x,"-",y,"="        ,Interval_sub(x,y))
+print(x,"·",y,"="        ,Interval_mul(x,y))
+print(x,"/",y,"="        ,Interval_div(x,y))
+print("max(",x,",",y,") =",Interval_max(x,y))
+print("min(",x,",",y,") =",Interval_min(x,y))
+print("2)")
+x = Interval(-2,4)
+y = Interval(1,3)
+print(x,"·",y,"="        ,Interval_mul(x,y))
+y = Interval(6,7)
+print(x,"⊔",y," ="      ,Interval_hull_union(x,y))
+x = empty_Interval
+y = Interval(1,2)
+print("max(",x,",",y,") =",Interval_max(x,y))
+x = Interval(-1,3)
+y = Interval(0,float("inf"))
+print(x,"/",y,"="        ,Interval_div(x,y))
+result_mult = Interval_mul(Interval(1,2),Interval(-1,3))
+result_intersec =Interval_intersection(Interval(1,3),Interval(6,7))
+print(result_intersec)
+result_max = Interval_max(result_intersec,Interval(1,2))
+result_sum = Interval_sum(result_mult,result_max)
+print("([1,2]·[-1,3])+max([1,3]∩[6,7],[1,2])=",result_sum)
+print("sqr(",y,") ="      ,Interval_sqr(Interval(-2,-3)))
+print(Interval_div(Interval(-1,3),Interval(0,float("inf"))))
+print(Interval_intersection(Interval(2,3),Interval(2.5,7)))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Exo1
+1)
+[-1,3] + [2,5] = [1,8]
+[-1,3] - [2,5] = [-6,1]
+[-1,3] · [2,5] = [-5,15]
+[-1,3] / [2,5] = [-0.5,1.5]
+max( [-1,3] , [2,5] ) = [2,5]
+min( [-1,3] , [2,5] ) = [-1,3]
+2)
+[-2,4] · [1,3] = [-6,12]
+[-2,4] ⊔ [6,7]  = [-2,7]
+max( ∅ , [1,2] ) = ∅
+[-1,3] / [0,∞] = [-∞,∞]
+[6,3]
+([1,2]·[-1,3])+max([1,3]∩[6,7],[1,2])= [1,12]
+sqr( [0,∞] ) = [4,9]
+[-∞,∞]
+[2.5,3]
+#+end_example
+
+#+RESLTS:
